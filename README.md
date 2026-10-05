@@ -5,9 +5,11 @@ A campus events app: five picks a day, no class clashes, and seat-limited sign-u
 ```
 flame-fomo/
   app.py            the brain (Flask server + database + sign in)
-  public/index.html the face (the whole website, one file)
+  index.html        the face (the whole website, one file)
   requirements.txt  list of Python helpers Vercel installs for you
+  vercel.json       tells Vercel to send every address to app.py
   .env.example      list of secret settings you need to fill in
+  .gitignore        keeps .env and the local database out of GitHub
 ```
 
 ## Why a Postgres database?
@@ -37,7 +39,8 @@ On your own laptop the app still uses a simple file, so you do not need anything
 1. Make a free account at github.com.
 2. Click **+** (top right) then **New repository**. Name it `flame-fomo`. Leave it **Private**. Click **Create**.
 3. On the next page click **uploading an existing file**.
-4. Drag in everything inside the `flame-fomo` folder (the `public` folder too).
+4. Drag in everything inside the `flame-fomo` folder, including `vercel.json`
+   (without it Vercel does not know to run `app.py`, and your site shows 404).
    Do NOT upload a file called `.env`.
 5. Click **Commit changes**.
 
@@ -102,6 +105,7 @@ connect to those services yet. The source switches (Student clubs, Departments, 
 ## If something looks wrong
 
 - **"The server is missing its SECRET_KEY setting"**: add `SECRET_KEY` in Vercel, then Deployments > Redeploy.
+- **The site shows 404 on Vercel**: `vercel.json` is missing from the repository. Upload it and redeploy.
 - **Codes never arrive**: check the SMTP values, and look in the spam folder.
 - **Everything is empty after a while**: the app adds sample events by itself when none are upcoming.
   Admins can also press **Add sample events** on the Add event tab.

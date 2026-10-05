@@ -71,7 +71,7 @@ input[type=checkbox]{width:24px;height:24px;min-height:0;flex:none}
 .error{color:var(--bad);background:var(--badbg);padding:10px 14px;border-radius:14px;margin:10px 0}
 .signin{margin-top:36px;text-align:center}
 .signin .card{text-align:left}
-.timeline{position:relative;margin:12px 0;border-left:2px solid var(--line);margin-left:52px;height:calc(15 * 48px)}
+.timeline{position:relative;margin:12px 0;border-left:2px solid var(--line);margin-left:52px;height:720px}
 .hour{position:absolute;left:-52px;width:46px;text-align:right;font-size:12px;color:var(--muted);transform:translateY(-8px)}
 .hline{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
 .block{position:absolute;left:8px;right:6px;border-radius:10px;padding:2px 8px;font-size:13px;overflow:hidden;color:#1d1611}
@@ -264,8 +264,7 @@ function card(id, opts = {}) {
     if (e.registered) btns.push(`<button class="btn small done" data-act="unreg" data-id="${id}">Registered ✓ Release</button>`);
     else btns.push(`<button class="btn small main" data-act="reg" data-id="${id}" ${e.full || e.closes_in_h <= 0 ? "disabled" : ""}>Register</button>`);
   }
-  if (e.going && e.seats === null) btns.push(`<button class="btn small done" data-act="ungo" data-id="${id}">Going ✓</button>`);
-  else if (e.going && !e.registered) btns.push(`<button class="btn small done" data-act="ungo" data-id="${id}">Going ✓</button>`);
+  if (e.going && (e.seats === null || !e.registered)) btns.push(`<button class="btn small done" data-act="ungo" data-id="${id}">Going ✓</button>`);
   else if (!e.going) btns.push(`<button class="btn small ${e.seats === null ? "main" : ""}" data-act="go" data-id="${id}">I am going</button>`);
   if (opts.skip && !e.going) btns.push(`<button class="btn small" data-act="skip" data-id="${id}">Skip</button>`);
   if (opts.leave && e.going && e.registered) btns.push(`<button class="btn small" data-act="ungo" data-id="${id}">Not going</button>`);
@@ -283,6 +282,7 @@ function card(id, opts = {}) {
 /* ---------- optimistic actions ---------- */
 async function act(kind, id) {
   const e = S.ev.get(id); if (!e || S.busy) return;
+  S.busy = true;                       // stops a double tap sending two requests
   const old = JSON.parse(JSON.stringify(e));
   const route = {reg: ["POST", "register"], unreg: ["DELETE", "register"], go: ["POST", "going"], ungo: ["DELETE", "going"], skip: ["POST", "hide"]}[kind];
   if (kind === "reg") { e.registered = true; e.going = true; if (e.seats !== null) { e.taken++; e.seats_left--; e.full = e.seats_left <= 0; } }
@@ -297,12 +297,17 @@ async function act(kind, id) {
     await load(S.view, true);
   } catch (err) {
     S.ev.set(id, old); toast(err.message, true); render();
+  } finally {
+    S.busy = false;
   }
 }
 
 /* ---------- loading each screen ---------- */
 async function load(view, quiet) {
   S.view = view;
+  // The day strip offers 7 days on Calendar but only 5 elsewhere, so keep the
+  // chosen day inside what this screen can actually show.
+  S.day = Math.max(0, Math.min(S.day, view === "calendar" ? 6 : 4));
   try {
     if (view === "today") {
       const r = await api(withQ("/api/best?day=" + S.day));
@@ -320,9 +325,9 @@ async function load(view, quiet) {
     } else if (view === "calendar") {
       S.cal = await api("/api/calendar?day=" + S.day);
       ingest(S.cal.events); S.cal.free.forEach(w => w.ids = ingest(w.events));
-    } else if (view === "map") {
+    } else if (view === "map" || view === "organise") {
       if (!S.venues.length) S.venues = (await api("/api/venues")).venues;
-      ingest((await api(withQ("/api/events"))).events);
+      if (view === "map") ingest((await api(withQ("/api/events"))).events);
     }
   } catch (err) { if (!quiet) toast(err.message, true); }
   render(); drawTabs();
@@ -343,7 +348,8 @@ const empty = txt => `<div class="empty">${txt}</div>`;
 const views = {
   today() {
     const chips = S.cfg.categories.map(c => `<button class="chip" data-chip="${c}" aria-pressed="${S.interests.has(c)}">${c}</button>`).join("");
-    const first = S.picks.map(id => card(id, {reason: S.reasons && S.reasons[id], skip: true})).join("");
+    const first = S.picks.filter(id => S.ev.get(id) && !S.ev.get(id).hidden)
+      .map(id => card(id, {reason: S.reasons && S.reasons[id], skip: true})).join("");
     const more = S.rest.filter(id => S.ev.get(id) && !S.ev.get(id).hidden).map(id => card(id, {compact: true})).join("");
     return `<h2>Your five for ${S.day === 0 ? "today" : dayName(addDays(S.cfg.today, S.day))}</h2>
       <p class="hint">Picked for you, and free of class clashes.</p>
@@ -378,15 +384,29 @@ const views = {
   },
   calendar() {
     const c = S.cal; if (!c) return "<p>Loading…</p>";
+    // The timeline normally runs 8am to 11pm, but it stretches to fit anything
+    // outside that, so an early class is never drawn in the wrong slot.
+    let loH = 8, hiH = 23;
+    c.blocks.concat(c.events).forEach(b => {
+      loH = Math.min(loH, Math.floor(b.start_min / 60));
+      hiH = Math.max(hiH, Math.ceil(b.end_min / 60));
+    });
+    loH = Math.max(0, loH); hiH = Math.min(24, hiH);
+    const PX = 48 / 60, y = m => (m - loH * 60) * PX, tall = y(hiH * 60);
     let lines = "";
-    for (let h = 8; h <= 23; h++) lines += `<div class="hline" style="top:${(h - 8) * 48}px"></div><div class="hour" style="top:${(h - 8) * 48}px">${t12(h * 60)}</div>`;
-    const bl = (s, e, cls, title) => { const top = Math.max(0, (s - 480) * 0.8), hgt = Math.max(18, (e - s) * 0.8 - 2); return `<div class="block ${cls}" style="top:${top}px;height:${hgt}px">${esc(title)}</div>`; };
+    for (let h = loH; h <= hiH; h++) lines += `<div class="hline" style="top:${y(h * 60)}px"></div><div class="hour" style="top:${y(h * 60)}px">${t12(h * 60)}</div>`;
+    const bl = (s, e, cls, title) => {
+      const s2 = Math.max(s, loH * 60), e2 = Math.min(e, hiH * 60);
+      if (e2 <= s2) return "";
+      const top = y(s2), hgt = Math.max(16, Math.min((e2 - s2) * PX - 2, tall - top));
+      return `<div class="block ${cls}" style="top:${top}px;height:${hgt}px">${esc(title)}</div>`;
+    };
     const blocks = c.blocks.map(b => bl(b.start_min, b.end_min, b.kind, b.title)).join("") + c.events.map(e => bl(e.start_min, e.end_min, "event", e.title)).join("");
     const removable = c.blocks.map(b => `<div class="switch"><span>${esc(b.title)}<small>${t12(b.start_min)}–${t12(b.end_min)}${b.kind === "class" ? " · every week" : ""}</small></span><button data-delbusy="${b.id}" aria-label="Remove ${esc(b.title)}">Remove</button></div>`).join("");
     const free = c.free.map(w => `<h3>Free ${t12(w.start_min)}–${t12(w.end_min)}</h3>${w.ids.length ? w.ids.map(id => card(id, {compact: true})).join("") : `<p class="hint">Nothing fits here. Enjoy the break.</p>`}`).join("");
     return `<h2>Calendar</h2>${dayStrip("Pick a day")}
       <div class="legend"><span><b style="background:var(--class)"></b>Class</span><span><b style="background:var(--busy)"></b>Busy</span><span><b style="background:var(--ev)"></b>Your events</span></div>
-      <div class="timeline" aria-label="Timeline for ${dayName(c.date)}">${lines}${blocks}</div>
+      <div class="timeline" style="height:${tall}px" aria-label="Timeline for ${dayName(c.date)}">${lines}${blocks}</div>
       ${removable ? `<h3>Your blocks</h3>${removable}` : ""}
       <h3>Add busy time</h3>
       <form id="busyForm" class="card compact">
@@ -531,7 +551,7 @@ document.addEventListener("click", async ev => {
     return;
   }
   if (t.id === "logout") { await api("/api/auth/logout", {method: "POST"}).catch(() => {}); S.me = null; S.ev.clear(); showSignIn(); return; }
-  if (t.id === "seedBtn") { try { const r = await api("/api/admin/seed-demo", {method: "POST"}); toast(r.message); } catch (e) { toast(e.message, true); } return; }
+  if (t.id === "seedBtn") { try { const r = await api("/api/admin/seed-demo", {method: "POST"}); toast(r.message); await load(S.view, true); } catch (e) { toast(e.message, true); } return; }
   const pin = ev.target.closest("g[data-venue]");
   if (pin) { S.mapSel = +pin.dataset.venue; return render(); }
   if (ev.target.closest("#mapsvg")) {

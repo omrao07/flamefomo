@@ -191,11 +191,21 @@ def minutes(dt):
     return dt.hour * 60 + dt.minute
 
 
+def day_arg(limit):
+    """The ?day= number, clamped to 0..limit. Junk counts as 0 instead of crashing."""
+    try:
+        day = int(request.args.get("day") or 0)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, min(limit, day))
+
+
 def seed_demo(db):
     """Add sample events for the next 7 days so the app is never empty."""
     for name, x, y in VENUES:
         db.run("INSERT INTO venues(name, x, y) VALUES(?,?,?) ON CONFLICT(name) DO NOTHING", (name, x, y))
     vid = {v["name"]: v["id"] for v in db.run("SELECT id, name FROM venues")}
+    have = {(r["title"], r["start_at"]) for r in db.run("SELECT title, start_at FROM events")}
     today = now().replace(hour=0, minute=0)
     added = 0
     for off in range(7):
@@ -205,6 +215,9 @@ def seed_demo(db):
             start = today + timedelta(days=off, hours=hour)
             if start < now() + timedelta(minutes=30):
                 continue
+            if (title, iso(start)) in have:
+                continue  # already seeded, so running this twice is harmless
+            have.add((title, iso(start)))
             end = start + timedelta(minutes=length)
             deadline = None
             if seats is not None:
@@ -281,17 +294,18 @@ def send_code(email, code):
     msg["To"] = email
     msg.set_content(f"Your FLAME FOMO code is {code}.\nIt works for {OTP_MINUTES} minutes. If this was not you, ignore this email.")
     port = int(os.environ.get("SMTP_PORT", "587"))
-    if port == 465:
-        server = smtplib.SMTP_SSL(host, port, timeout=15)
-    else:
-        server = smtplib.SMTP(host, port, timeout=15)
-        server.starttls()
+    server = smtplib.SMTP_SSL(host, port, timeout=15) if port == 465 else smtplib.SMTP(host, port, timeout=15)
     try:
+        if port != 465:
+            server.starttls()
         if user:
             server.login(user, os.environ.get("SMTP_PASS", ""))
         server.send_message(msg)
     finally:
-        server.quit()
+        try:
+            server.quit()  # never let a dead socket hide the real error
+        except Exception:
+            pass
     return True
 
 
@@ -584,7 +598,7 @@ def venues():
 @auth
 def best():
     db = get_db()
-    day = max(0, min(4, int(request.args.get("day", 0) or 0)))
+    day = day_arg(4)
     date = (now() + timedelta(days=day)).strftime("%Y-%m-%d")
     ctx = build(db, g.user["id"])
     taste = taste_for(db, g.user["id"])
@@ -662,7 +676,11 @@ def create_event():
         return err("Pick a category from the list.")
     source = d.get("source") if d.get("source") in SOURCES else "Official"
     db = get_db()
-    venue = db.one("SELECT id FROM venues WHERE id=?", (int(d.get("venue_id") or 0),))
+    try:
+        venue_id = int(d.get("venue_id") or 0)
+    except (TypeError, ValueError):
+        venue_id = 0
+    venue = db.one("SELECT id FROM venues WHERE id=?", (venue_id,))
     if not venue:
         return err("Pick a venue from the list.")
     try:
@@ -677,10 +695,14 @@ def create_event():
         return err("The event must end after it starts.")
     if seats is not None and seats < 1:
         return err("Seats must be 1 or more, or leave it empty for no limit.")
+    if end <= now():
+        return err("That event has already finished. Check the date and time.")
     if seats is not None:
         deadline = deadline or start
         if deadline > start:
             return err("Sign-ups must close before the event starts.")
+        if deadline <= now():
+            return err("Sign-ups would already be closed. Move the closing time later.")
     else:
         deadline = None
     row = db.one(
@@ -853,7 +875,7 @@ def delete_busy(bid):
 @auth
 def calendar():
     db = get_db()
-    day = max(0, min(14, int(request.args.get("day", 0) or 0)))
+    day = day_arg(14)
     start_of_day = now().replace(hour=0, minute=0) + timedelta(days=day)
     date = start_of_day.strftime("%Y-%m-%d")
     ctx = build(db, g.user["id"])
@@ -868,8 +890,9 @@ def calendar():
     hi = 22 * 60
     windows, cursor = [], lo
     for s, e in taken_spans:
-        if s > cursor and s - cursor >= 30:
-            windows.append((cursor, min(s, hi)))
+        gap_end = min(s, hi)
+        if gap_end - cursor >= 30:
+            windows.append((cursor, gap_end))
         cursor = max(cursor, e)
     if hi - cursor >= 30:
         windows.append((cursor, hi))
@@ -887,18 +910,21 @@ def calendar():
 def admin_seed():
     if g.user["role"] != "admin":
         return err("Only admins can do this.", 403)
-    return jsonify(added=seed_demo(get_db()), message="Sample events added.")
+    added = seed_demo(get_db())
+    return jsonify(added=added, message=f"{added} sample events added." if added else "Sample events are already there.")
 
 
 # --------------------------------------------------------------------------
 # The website itself. (On Vercel the CDN may serve public/ first; this is the safety net.)
 # --------------------------------------------------------------------------
 PUBLIC = os.path.join(ROOT, "public")
+# index.html may sit in public/ or next to this file; serve whichever one is there.
+SITE = PUBLIC if os.path.isfile(os.path.join(PUBLIC, "index.html")) else ROOT
 
 
 @app.get("/")
 def home():
-    return send_from_directory(PUBLIC, "index.html")
+    return send_from_directory(SITE, "index.html")
 
 
 if __name__ == "__main__":
