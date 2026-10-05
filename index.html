@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>FLAME FOMO</title>
+<style>
+:root{
+  --bg:#fbf3e6; --card:#fffaf1; --ink:#3b2a1e; --muted:#7a6552; --line:#ead9c0;
+  --orange:#e8650a; --orange-ink:#fff; --soft:#f6e6cc; --bad:#c0301f; --badbg:#fde3de; --ok:#2f7d4f; --okbg:#dff3e5;
+  --class:#8aa4b8; --busy:#b9a894; --ev:#f0a15e;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#1d1611; --card:#2a2019; --ink:#f4e8d8; --muted:#b8a58f; --line:#41322a; --soft:#38291f;
+    --orange:#f08a3c; --orange-ink:#1d1611; --bad:#ff9d8f; --badbg:#4a2520; --ok:#7bd39a; --okbg:#1f3a2a;
+    --class:#5d7589; --busy:#6d5f50; --ev:#c06a22;}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.skip{position:absolute;left:-999px;top:0;background:var(--orange);color:var(--orange-ink);padding:8px 12px;border-radius:0 0 12px 0}
+.skip:focus{left:0;z-index:10}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+header{display:flex;align-items:center;gap:10px;max-width:640px;margin:0 auto;padding:16px 16px 6px}
+header h1{font-size:22px;margin:0;flex:1;letter-spacing:.3px}
+header h1 span{color:var(--orange)}
+#who{font-size:14px;color:var(--muted);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav{max-width:640px;margin:0 auto;display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none}
+main{max-width:640px;margin:0 auto;padding:8px 16px 90px;outline:none}
+h2{font-size:24px;margin:12px 0 4px}
+h3{font-size:18px;margin:20px 0 8px}
+p.hint{color:var(--muted);margin:2px 0 12px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.tab{border:1px solid var(--line);background:var(--card);padding:10px 16px;border-radius:999px;min-height:44px;white-space:nowrap}
+.tab[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--card);padding:12px 18px;border-radius:16px;min-height:48px;font-weight:600}
+.btn.main{background:var(--orange);color:var(--orange-ink);border-color:var(--orange)}
+.btn.small{min-height:44px;padding:8px 14px;border-radius:14px}
+.btn.done{background:var(--okbg);color:var(--ok);border-color:var(--ok)}
+.btn.link{border:none;background:none;text-decoration:underline;min-height:44px;color:var(--muted)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
+.strip button{flex:none;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:8px 14px;min-height:56px;text-align:center}
+.strip button small{display:block;color:var(--muted);font-size:12px}
+.strip button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.strip button[aria-pressed=true] small{color:var(--bg)}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;min-height:44px}
+.chip[aria-pressed=true]{background:var(--soft);border-color:var(--orange);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px;margin:12px 0}
+.card.big h3{font-size:21px}
+.card.compact{padding:12px 14px;border-radius:18px}
+.card h3{margin:0 0 4px}
+.meta{color:var(--muted);font-size:15px}
+.pill{display:inline-block;background:var(--soft);border-radius:999px;padding:2px 10px;font-size:13px;margin-right:6px}
+.why{color:var(--orange);font-weight:600;margin:6px 0}
+.warn{display:inline-block;background:var(--soft);border-radius:10px;padding:4px 10px;margin:6px 6px 0 0;font-size:14px;font-weight:600}
+.warn.bad{background:var(--badbg);color:var(--bad)}
+.bar{height:10px;border-radius:99px;background:var(--soft);overflow:hidden;margin:10px 0 2px}
+.bar i{display:block;height:100%;background:var(--orange)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.empty{text-align:center;color:var(--muted);padding:28px 8px}
+label{display:block;font-weight:600;margin:12px 0 4px}
+input,select,textarea{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);min-height:48px}
+input[type=checkbox]{width:24px;height:24px;min-height:0;flex:none}
+.check{display:flex;gap:10px;align-items:center;font-weight:500}
+.error{color:var(--bad);background:var(--badbg);padding:10px 14px;border-radius:14px;margin:10px 0}
+.signin{margin-top:36px;text-align:center}
+.signin .card{text-align:left}
+.timeline{position:relative;margin:12px 0;border-left:2px solid var(--line);margin-left:52px;height:calc(15 * 48px)}
+.hour{position:absolute;left:-52px;width:46px;text-align:right;font-size:12px;color:var(--muted);transform:translateY(-8px)}
+.hline{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+.block{position:absolute;left:8px;right:6px;border-radius:10px;padding:2px 8px;font-size:13px;overflow:hidden;color:#1d1611}
+.block.class{background:var(--class)} .block.busy{background:var(--busy)} .block.event{background:var(--ev)}
+.legend{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.legend b{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:4px}
+.map{width:100%;background:var(--soft);border-radius:24px;border:1px solid var(--line);touch-action:manipulation}
+.map text{font-size:3.4px;fill:var(--ink);pointer-events:none}
+.pin{cursor:pointer}
+.pin circle{fill:var(--orange);stroke:var(--card);stroke-width:.8}
+.pin.sel circle{fill:var(--ink)}
+.chat{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.bubble{padding:10px 14px;border-radius:18px;max-width:88%}
+.bubble.me{align-self:flex-end;background:var(--orange);color:var(--orange-ink)}
+.bubble.bot{align-self:flex-start;background:var(--card);border:1px solid var(--line)}
+.bubble ul{margin:6px 0 0;padding-left:18px}
+.switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.switch small{display:block;color:var(--muted)}
+.switch button{min-width:64px;min-height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700}
+.switch button[aria-checked=true]{background:var(--orange);color:var(--orange-ink);border-color:var(--orange)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:16px;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+#toast.show{opacity:1}
+#toast.bad{background:var(--bad);color:#fff}
+.dev{background:var(--soft);padding:10px 14px;border-radius:14px;margin:10px 0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <h1>FLAME <span>FOMO</span></h1>
+  <span id="who"></span>
+  <button class="btn small" id="logout" hidden>Sign out</button>
+</header>
+<nav id="tabs" role="tablist" aria-label="Screens" hidden></nav>
+<main id="main" tabindex="-1" aria-live="off"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+"use strict";
+/* ---------- tiny helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const t12 = m => { const h = Math.floor(m / 60), mi = m % 60; return ((h + 11) % 12 + 1) + (mi ? ":" + pad(mi) : "") + " " + (h < 12 || h === 24 ? "am" : "pm"); };
+const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const dayName = iso => new Date(iso + "T00:00:00Z").toLocaleDateString("en-IN", {weekday: "short", day: "numeric", month: "short", timeZone: "UTC"});
+const dayParts = iso => { const d = new Date(iso + "T00:00:00Z"); return [d.toLocaleDateString("en-IN", {weekday: "short", timeZone: "UTC"}), d.getUTCDate()]; };
+const hoursLabel = h => h < 1 ? Math.max(1, Math.round(h * 60)) + " min" : h < 24 ? Math.round(h) + " h" : Math.round(h / 24) + " days";
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+/* ---------- state ---------- */
+const S = {
+  me: null, cfg: null, view: "today", day: 0, venues: [],
+  ev: new Map(),                       // every event we know about, by id
+  picks: [], rest: [],                 // Today screen
+  groups: [], plan: [], list: [],      // other screens (arrays of ids / groups of ids)
+  cal: null, interests: new Set(), filter: "all",
+  sources: store.get("fomo.sources", null), connect: store.get("fomo.connect", {}),
+  pos: store.get("fomo.pos", {x: 12, y: 92}), mapSel: null, chat: [], busy: false
+};
+
+/* ---------- talking to the server ---------- */
+async function api(path, opts = {}) {
+  const o = {method: opts.method || "GET", credentials: "same-origin", headers: {"X-Requested-With": "fomo"}};
+  if (opts.body !== undefined) { o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(opts.body); }
+  let res;
+  try { res = await fetch(path, o); } catch { throw new Error("No connection. Check your internet and try again."); }
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (res.status === 401 && S.me) { S.me = null; showSignIn(); throw new Error("Please sign in again."); }
+  if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
+  return data;
+}
+const srcQuery = () => {
+  const all = S.cfg.sources;
+  if (!S.sources || S.sources.length === all.length) return "";
+  return "sources=" + encodeURIComponent(S.sources.join(","));
+};
+const withQ = (path, extra = "") => { const q = [extra, srcQuery()].filter(Boolean).join("&"); return q ? path + (path.includes("?") ? "&" : "?") + q : path; };
+function ingest(list) { list.forEach(e => S.ev.set(e.id, e)); return list.map(e => e.id); }
+
+let toastTimer;
+function toast(msg, bad) {
+  const t = $("#toast");
+  t.textContent = msg; t.className = "show" + (bad ? " bad" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "", 3200);
+}
+
+/* ---------- screens list ---------- */
+const TABS = [
+  ["today", "Today"], ["urgent", "Time-sensitive"], ["all", "All events"], ["plan", "My plan"],
+  ["calendar", "Calendar"], ["map", "Map"], ["ask", "Ask FOMO"], ["connect", "Connect"]
+];
+function drawTabs() {
+  const tabs = TABS.slice();
+  if (S.me && (S.me.role === "admin" || S.me.role === "organiser")) tabs.push(["organise", "Add event"]);
+  const nav = $("#tabs");
+  nav.hidden = false;
+  nav.innerHTML = tabs.map(([k, n]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${k === S.view}">${n}</button>`).join("");
+}
+
+/* ---------- sign in ---------- */
+let pendingEmail = "";
+function showSignIn() {
+  $("#tabs").hidden = true; $("#logout").hidden = true; $("#who").textContent = "";
+  pendingEmail = "";
+  $("#main").innerHTML = `
+    <div class="signin">
+      <h2>Never miss the good stuff</h2>
+      <p class="hint">Five campus events a day, picked for you.</p>
+      <div class="card" id="signcard">
+        <form id="emailForm">
+          <label for="email">Your FLAME email</label>
+          <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@${esc(S.cfg.domain)}" required>
+          <div id="signmsg"></div>
+          <div class="actions"><button class="btn main" type="submit">Email me a code</button></div>
+        </form>
+        <div id="gbtn" style="margin-top:16px"></div>
+      </div>
+    </div>`;
+  $("#emailForm").addEventListener("submit", askCode);
+  if (S.cfg.google_client_id) setupGoogle(0);
+}
+function signMsg(html) { $("#signmsg").innerHTML = html; }
+async function askCode(ev) {
+  ev.preventDefault();
+  const email = $("#email").value.trim().toLowerCase();
+  if (!email.endsWith("@" + S.cfg.domain)) return signMsg(`<div class="error" role="alert">Use your university email, the one that ends in @${esc(S.cfg.domain)}.</div>`);
+  const btn = ev.submitter; btn.disabled = true;
+  try {
+    const r = await api("/api/auth/request-code", {method: "POST", body: {email}});
+    pendingEmail = email;
+    $("#gbtn").innerHTML = "";
+    $("#signcard").firstElementChild.outerHTML = `
+      <form id="codeForm">
+        <p>We sent a 6-digit code to <b>${esc(email)}</b>.</p>
+        ${r.dev_code ? `<div class="dev">Test mode: your code is <b>${esc(r.dev_code)}</b></div>` : ""}
+        <label for="code">Your code</label>
+        <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
+        <div id="signmsg"></div>
+        <div class="actions"><button class="btn main" type="submit">Let me in</button>
+        <button class="btn link" type="button" id="again">Use a different email</button></div>
+      </form>`;
+    $("#codeForm").addEventListener("submit", checkCode);
+    $("#again").addEventListener("click", showSignIn);
+    $("#code").focus();
+  } catch (e) { signMsg(`<div class="error" role="alert">${esc(e.message)}</div>`); btn.disabled = false; }
+}
+async function checkCode(ev) {
+  ev.preventDefault();
+  const btn = ev.submitter; btn.disabled = true;
+  try {
+    const r = await api("/api/auth/verify-code", {method: "POST", body: {email: pendingEmail, code: $("#code").value.trim()}});
+    S.me = r.user; await boot();
+  } catch (e) { signMsg(`<div class="error" role="alert">${esc(e.message)}</div>`); btn.disabled = false; }
+}
+function setupGoogle(n) {
+  if (window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({client_id: S.cfg.google_client_id, hd: S.cfg.domain, callback: async resp => {
+      try { const r = await api("/api/auth/google", {method: "POST", body: {credential: resp.credential}}); S.me = r.user; await boot(); }
+      catch (e) { const m = $("#signmsg"); if (m) signMsg(`<div class="error" role="alert">${esc(e.message)}</div>`); }
+    }});
+    const box = $("#gbtn"); if (box) google.accounts.id.renderButton(box, {theme: "outline", size: "large", text: "continue_with", width: 280});
+  } else if (n < 25) setTimeout(() => setupGoogle(n + 1), 300);
+}
+
+/* ---------- event card ---------- */
+function card(id, opts = {}) {
+  const e = S.ev.get(id); if (!e) return "";
+  const warns = [];
+  if (e.clash.length) warns.push(`<span class="warn bad">Clashes with ${esc(e.clash.join(", "))}</span>`);
+  if (e.full && !e.registered) warns.push(`<span class="warn bad">Full</span>`);
+  else if (e.seats !== null && !e.registered) {
+    if (e.closes_in_h <= 0) warns.push(`<span class="warn bad">Sign-up closed</span>`);
+    else if (e.closes_in_h < 6) warns.push(`<span class="warn">Sign-up closes in ${hoursLabel(e.closes_in_h)}</span>`);
+    else if (e.seats_left <= 10) warns.push(`<span class="warn">Only ${e.seats_left} seats left</span>`);
+  }
+  let bar = "";
+  if (e.seats !== null) {
+    const pct = Math.min(100, Math.round(e.taken / e.seats * 100));
+    bar = `<div class="bar" role="img" aria-label="${e.taken} of ${e.seats} seats taken"><i style="width:${pct}%"></i></div>
+           <div class="meta">${e.full ? "No seats left" : e.seats_left + " of " + e.seats + " seats left"}</div>`;
+  }
+  const btns = [];
+  if (e.seats !== null) {
+    if (e.registered) btns.push(`<button class="btn small done" data-act="unreg" data-id="${id}">Registered ✓ Release</button>`);
+    else btns.push(`<button class="btn small main" data-act="reg" data-id="${id}" ${e.full || e.closes_in_h <= 0 ? "disabled" : ""}>Register</button>`);
+  }
+  if (e.going && e.seats === null) btns.push(`<button class="btn small done" data-act="ungo" data-id="${id}">Going ✓</button>`);
+  else if (e.going && !e.registered) btns.push(`<button class="btn small done" data-act="ungo" data-id="${id}">Going ✓</button>`);
+  else if (!e.going) btns.push(`<button class="btn small ${e.seats === null ? "main" : ""}" data-act="go" data-id="${id}">I am going</button>`);
+  if (opts.skip && !e.going) btns.push(`<button class="btn small" data-act="skip" data-id="${id}">Skip</button>`);
+  if (opts.leave && e.going && e.registered) btns.push(`<button class="btn small" data-act="ungo" data-id="${id}">Not going</button>`);
+  const compact = opts.compact;
+  return `<article class="card ${compact ? "compact" : "big"}" aria-label="${esc(e.title)}">
+    <h3>${esc(e.title)}</h3>
+    <div class="meta"><span class="pill">${esc(e.category)}</span>${dayName(e.date)} · ${t12(e.start_min)}–${t12(e.end_min)} · ${esc(e.venue)}</div>
+    ${opts.reason ? `<div class="why">${esc(opts.reason)}</div>` : ""}
+    ${compact ? "" : `<p>${esc(e.description)}</p>`}
+    ${warns.join("")}${compact ? "" : bar}
+    <div class="actions">${btns.join("")}</div>
+  </article>`;
+}
+
+/* ---------- optimistic actions ---------- */
+async function act(kind, id) {
+  const e = S.ev.get(id); if (!e || S.busy) return;
+  const old = JSON.parse(JSON.stringify(e));
+  const route = {reg: ["POST", "register"], unreg: ["DELETE", "register"], go: ["POST", "going"], ungo: ["DELETE", "going"], skip: ["POST", "hide"]}[kind];
+  if (kind === "reg") { e.registered = true; e.going = true; if (e.seats !== null) { e.taken++; e.seats_left--; e.full = e.seats_left <= 0; } }
+  if (kind === "unreg") { e.registered = false; if (e.seats !== null) { e.taken--; e.seats_left++; e.full = false; } }
+  if (kind === "go") e.going = true;
+  if (kind === "ungo") { if (e.registered && e.seats !== null) { e.taken--; e.seats_left++; e.full = false; } e.going = false; e.registered = false; }
+  if (kind === "skip") e.hidden = true;
+  render();
+  try {
+    const r = await api(`/api/events/${id}/${route[1]}`, {method: route[0]});
+    S.ev.set(id, r.event); toast(r.message);
+    await load(S.view, true);
+  } catch (err) {
+    S.ev.set(id, old); toast(err.message, true); render();
+  }
+}
+
+/* ---------- loading each screen ---------- */
+async function load(view, quiet) {
+  S.view = view;
+  try {
+    if (view === "today") {
+      const r = await api(withQ("/api/best?day=" + S.day));
+      S.reasons = {};
+      r.picks.forEach(p => S.reasons[p.event.id] = p.reason);
+      S.picks = ingest(r.picks.map(p => p.event)); S.rest = ingest(r.rest);
+    } else if (view === "urgent") {
+      const r = await api(withQ("/api/time-sensitive"));
+      S.groups = r.groups.map(g => ({label: g.label, ids: ingest(g.events)}));
+    } else if (view === "all") {
+      const r = await api(withQ("/api/events"));
+      S.list = ingest(r.events);
+    } else if (view === "plan") {
+      S.plan = ingest((await api("/api/plan")).events);
+    } else if (view === "calendar") {
+      S.cal = await api("/api/calendar?day=" + S.day);
+      ingest(S.cal.events); S.cal.free.forEach(w => w.ids = ingest(w.events));
+    } else if (view === "map") {
+      if (!S.venues.length) S.venues = (await api("/api/venues")).venues;
+      ingest((await api(withQ("/api/events"))).events);
+    }
+  } catch (err) { if (!quiet) toast(err.message, true); }
+  render(); drawTabs();
+  if (!quiet) { const m = $("#main"); m.focus({preventScroll: true}); window.scrollTo(0, 0); }
+}
+
+/* ---------- renderers ---------- */
+function dayStrip(label) {
+  let h = `<div class="strip" role="group" aria-label="${label}">`;
+  for (let i = 0; i < (S.view === "calendar" ? 7 : 5); i++) {
+    const [w, d] = dayParts(addDays(S.cfg.today, i));
+    h += `<button data-day="${i}" aria-pressed="${i === S.day}"><small>${i === 0 ? "Today" : w}</small>${d}</button>`;
+  }
+  return h + "</div>";
+}
+const empty = txt => `<div class="empty">${txt}</div>`;
+
+const views = {
+  today() {
+    const chips = S.cfg.categories.map(c => `<button class="chip" data-chip="${c}" aria-pressed="${S.interests.has(c)}">${c}</button>`).join("");
+    const first = S.picks.map(id => card(id, {reason: S.reasons && S.reasons[id], skip: true})).join("");
+    const more = S.rest.filter(id => S.ev.get(id) && !S.ev.get(id).hidden).map(id => card(id, {compact: true})).join("");
+    return `<h2>Your five for ${S.day === 0 ? "today" : dayName(addDays(S.cfg.today, S.day))}</h2>
+      <p class="hint">Picked for you, and free of class clashes.</p>
+      ${dayStrip("Pick a day")}
+      <h3>What do you like?</h3><div class="row" role="group" aria-label="Interests">${chips}</div>
+      ${first || empty("Nothing fits this day yet. Try another day or tap more interests.")}
+      ${more ? `<h3>Also on this day</h3>${more}` : ""}`;
+  },
+  urgent() {
+    if (!S.groups.length) return `<h2>Time-sensitive</h2>${empty("No sign-ups are closing soon. Nice and calm.")}`;
+    return `<h2>Closing soon</h2><p class="hint">Events with seats, by how soon sign-up ends.</p>` +
+      S.groups.map(g => `<h3>${esc(g.label)}</h3>${g.ids.map(id => card(id, {compact: true})).join("")}`).join("");
+  },
+  all() {
+    const f = S.filter;
+    const ok = e => !e.hidden && (f === "all" || (f === "needs" && e.seats !== null && !e.registered) ||
+      (f === "open" && e.seats !== null && !e.full && e.closes_in_h > 0) || (f === "reg" && e.registered));
+    const ids = S.list.filter(id => ok(S.ev.get(id)));
+    let last = "", html = "";
+    ids.forEach(id => { const e = S.ev.get(id); if (e.date !== last) { last = e.date; html += `<h3>${dayName(e.date)}</h3>`; } html += card(id, {compact: true}); });
+    return `<h2>All events</h2>
+      <label for="flt">Show</label>
+      <select id="flt"><option value="all">Every event</option><option value="needs">Needs a sign-up</option><option value="open">Seats still open</option><option value="reg">I am registered</option></select>
+      ${html || empty("Nothing matches this filter.")}`;
+  },
+  plan() {
+    if (!S.plan.length) return `<h2>My plan</h2>${empty("Nothing yet. Tap “I am going” on an event and it lands here.")}`;
+    const bad = S.plan.filter(id => S.ev.get(id).clash.length).length;
+    return `<h2>My plan</h2>
+      ${bad ? `<div class="error" role="alert">${bad} of your events clash with something. Review the red ones.</div>` : `<p class="hint">No clashes. You are all set.</p>`}
+      ${S.plan.map(id => card(id, {compact: true, leave: true})).join("")}`;
+  },
+  calendar() {
+    const c = S.cal; if (!c) return "<p>Loading…</p>";
+    let lines = "";
+    for (let h = 8; h <= 23; h++) lines += `<div class="hline" style="top:${(h - 8) * 48}px"></div><div class="hour" style="top:${(h - 8) * 48}px">${t12(h * 60)}</div>`;
+    const bl = (s, e, cls, title) => { const top = Math.max(0, (s - 480) * 0.8), hgt = Math.max(18, (e - s) * 0.8 - 2); return `<div class="block ${cls}" style="top:${top}px;height:${hgt}px">${esc(title)}</div>`; };
+    const blocks = c.blocks.map(b => bl(b.start_min, b.end_min, b.kind, b.title)).join("") + c.events.map(e => bl(e.start_min, e.end_min, "event", e.title)).join("");
+    const removable = c.blocks.map(b => `<div class="switch"><span>${esc(b.title)}<small>${t12(b.start_min)}–${t12(b.end_min)}${b.kind === "class" ? " · every week" : ""}</small></span><button data-delbusy="${b.id}" aria-label="Remove ${esc(b.title)}">Remove</button></div>`).join("");
+    const free = c.free.map(w => `<h3>Free ${t12(w.start_min)}–${t12(w.end_min)}</h3>${w.ids.length ? w.ids.map(id => card(id, {compact: true})).join("") : `<p class="hint">Nothing fits here. Enjoy the break.</p>`}`).join("");
+    return `<h2>Calendar</h2>${dayStrip("Pick a day")}
+      <div class="legend"><span><b style="background:var(--class)"></b>Class</span><span><b style="background:var(--busy)"></b>Busy</span><span><b style="background:var(--ev)"></b>Your events</span></div>
+      <div class="timeline" aria-label="Timeline for ${dayName(c.date)}">${lines}${blocks}</div>
+      ${removable ? `<h3>Your blocks</h3>${removable}` : ""}
+      <h3>Add busy time</h3>
+      <form id="busyForm" class="card compact">
+        <label for="bt">What is it?</label><input id="bt" placeholder="Economics class" maxlength="80">
+        <div class="row"><div style="flex:1"><label for="bs">From</label><input id="bs" type="time" value="14:00" required></div>
+        <div style="flex:1"><label for="be">To</label><input id="be" type="time" value="15:30" required></div></div>
+        <label class="check"><input type="checkbox" id="bw"> Repeats every ${dayParts(c.date)[0]}</label>
+        <div class="actions"><button class="btn main" type="submit">Add busy time</button></div>
+      </form>
+      ${free ? `<h2>Free windows</h2>${free}` : ""}`;
+  },
+  map() {
+    const dist = v => Math.hypot(v.x - S.pos.x, v.y - S.pos.y) * 8;
+    const dir = v => { const a = (Math.atan2(v.x - S.pos.x, -(v.y - S.pos.y)) * 180 / Math.PI + 360) % 360; return ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][Math.round(a / 45) % 8]; };
+    const pins = S.venues.map(v => `<g class="pin ${S.mapSel === v.id ? "sel" : ""}" data-venue="${v.id}" tabindex="0" role="button" aria-label="${esc(v.name)}">
+      <circle cx="${v.x}" cy="${v.y}" r="3.2"/><text x="${v.x}" y="${v.y - 4.6}" text-anchor="middle">${esc(v.name)}</text></g>`).join("");
+    let panel = `<p class="hint">Tap a pin to see the walk. Tap an empty spot to say where you are.</p>`;
+    const v = S.venues.find(x => x.id === S.mapSel);
+    if (v) {
+      const m = dist(v), walk = Math.max(1, Math.ceil(m / 80));
+      const here = [...S.ev.values()].filter(e => e.venue_id === v.id && !e.hidden).sort((a, b) => a.start_at.localeCompare(b.start_at)).slice(0, 4);
+      panel = `<div class="card compact"><h3>${esc(v.name)}</h3>
+        <div class="meta">${m < 15 ? "You are right here." : `About ${walk} min walk (${Math.round(m)} m), to the ${dir(v)}.`}</div></div>
+        ${here.map(e => card(e.id, {compact: true})).join("") || `<p class="hint">No events here soon.</p>`}`;
+    }
+    return `<h2>Campus map</h2>
+      <svg class="map" id="mapsvg" viewBox="0 0 100 100" role="group" aria-label="Campus map">
+        <path d="M0 80 Q30 78 50 82 T100 78" stroke="var(--line)" stroke-width="3" fill="none"/>
+        <path d="M45 100 L48 40 L50 0" stroke="var(--line)" stroke-width="3" fill="none"/>
+        <ellipse cx="18" cy="48" rx="12" ry="8" fill="var(--okbg)"/><ellipse cx="88" cy="20" rx="9" ry="12" fill="var(--okbg)"/>
+        ${pins}
+        <g><circle cx="${S.pos.x}" cy="${S.pos.y}" r="2.4" fill="#2a6fdb" stroke="#fff" stroke-width=".8"/><text x="${S.pos.x}" y="${S.pos.y + 6}" text-anchor="middle">You</text></g>
+      </svg>${panel}`;
+  },
+  ask() {
+    const log = S.chat.map(m => `<div class="bubble ${m.who}">${m.html}</div>`).join("");
+    return `<h2>Ask FOMO</h2><p class="hint">Try “what is on tomorrow?”, “am I free at 7?” or “any clashes?”</p>
+      <div class="chat" aria-live="polite">${log}</div>
+      <form id="askForm" class="row" style="flex-wrap:nowrap"><label for="q" style="position:absolute;left:-999px">Your question</label>
+      <input id="q" placeholder="Type a question" autocomplete="off" required><button class="btn main" type="submit">Ask</button></form>`;
+  },
+  connect() {
+    const items = [["gmail", "Gmail", "Find events in your inbox"], ["moodle", "Moodle", "Bring in your classes"], ["gcal", "Google Calendar", "Block out what you already have"]];
+    const sw = (key, name, sub, on) => `<div class="switch"><span>${name}<small>${sub}</small></span><button role="switch" aria-checked="${on}" aria-label="${name}" data-switch="${key}">${on ? "On" : "Off"}</button></div>`;
+    const srcOn = new Set(S.sources || S.cfg.sources);
+    return `<h2>Connect</h2>
+      <p class="hint">These three are a preview. Switching them on is saved on this phone, but nothing is linked to your accounts yet.</p>
+      ${items.map(([k, n, s]) => sw("c:" + k, n, s, !!S.connect[k])).join("")}
+      <h3>Where events come from</h3>
+      <p class="hint">Switch off a source to hide its events everywhere.</p>
+      ${S.cfg.sources.map(s => sw("s:" + s, s, "", srcOn.has(s))).join("")}`;
+  },
+  organise() {
+    const venues = S.venues.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join("");
+    const cats = S.cfg.categories.map(c => `<option>${c}</option>`).join("");
+    const srcs = S.cfg.sources.map(c => `<option>${c}</option>`).join("");
+    return `<h2>Add an event</h2><p class="hint">Leave seats empty if anyone can come.</p>
+      <form id="evForm" class="card">
+        <label for="f-title">Title</label><input id="f-title" required maxlength="120">
+        <label for="f-desc">What is it?</label><textarea id="f-desc" rows="3" maxlength="600"></textarea>
+        <div class="row"><div style="flex:1"><label for="f-cat">Category</label><select id="f-cat">${cats}</select></div>
+        <div style="flex:1"><label for="f-src">From</label><select id="f-src">${srcs}</select></div></div>
+        <label for="f-venue">Where</label><select id="f-venue">${venues}</select>
+        <label for="f-date">Day</label><input id="f-date" type="date" min="${S.cfg.today}" value="${S.cfg.today}" required>
+        <div class="row"><div style="flex:1"><label for="f-s">Starts</label><input id="f-s" type="time" value="18:00" required></div>
+        <div style="flex:1"><label for="f-e">Ends</label><input id="f-e" type="time" value="19:30" required></div></div>
+        <label for="f-seats">Seats (optional)</label><input id="f-seats" type="number" min="1" inputmode="numeric">
+        <label for="f-dl">Sign-up closes (optional)</label><input id="f-dl" type="datetime-local">
+        <div class="actions"><button class="btn main" type="submit">Add event</button></div>
+      </form>
+      ${S.me.role === "admin" ? `<button class="btn" id="seedBtn">Add sample events</button>` : ""}`;
+  }
+};
+
+function render() {
+  const m = $("#main");
+  if (!S.me) return;
+  m.innerHTML = (views[S.view] || views.today)();
+  if (S.view === "all") $("#flt").value = S.filter;
+}
+
+/* ---------- Ask FOMO brain (runs in the page) ---------- */
+function parseDay(s) {
+  if (/day after/.test(s)) return 2;
+  if (/tomorrow/.test(s)) return 1;
+  if (/today|tonight/.test(s)) return 0;
+  const names = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  for (let i = 0; i < 7; i++) {
+    if (new RegExp("\\b" + names[i]).test(s)) {
+      for (let n = 0; n < 7; n++) if (new Date(addDays(S.cfg.today, n) + "T00:00:00Z").getUTCDay() === i) return n;
+    }
+  }
+  return 0;
+}
+async function answer(q) {
+  const s = q.toLowerCase();
+  const day = parseDay(s), date = addDays(S.cfg.today, day), label = day === 0 ? "today" : day === 1 ? "tomorrow" : dayName(date);
+  const list = es => `<ul>${es.map(e => `<li>${esc(e.title)}, ${t12(e.start_min)} at ${esc(e.venue)}</li>`).join("")}</ul>`;
+  if (/clash|overlap|conflict/.test(s)) {
+    const evs = (await api("/api/plan")).events.filter(e => e.clash.length);
+    return evs.length ? `Yes. ${evs.length} of your events clash:${list(evs)}Open My plan to fix them.` : "No clashes. Your plan looks clean.";
+  }
+  const t = s.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if (/free|busy|available/.test(s) && t) {
+    let h = +t[1], mi = +(t[2] || 0);
+    if (t[3] === "pm" && h < 12) h += 12; else if (t[3] === "am" && h === 12) h = 0; else if (!t[3] && h < 8) h += 12;
+    const at = h * 60 + mi, c = await api("/api/calendar?day=" + day);
+    const hit = c.blocks.find(b => at >= b.start_min && at < b.end_min) || c.events.find(e => at >= e.start_min && at < e.end_min);
+    return hit ? `Not at ${t12(at)} ${label}. You have “${esc(hit.title)}” (${t12(hit.start_min)}–${t12(hit.end_min)}).` : `Yes, you look free at ${t12(at)} ${label}.`;
+  }
+  if (/seat|register|closing|deadline|sign.?up/.test(s)) {
+    const g = (await api(withQ("/api/time-sensitive"))).groups.flatMap(x => x.events).slice(0, 4);
+    return g.length ? `These close soonest:${list(g)}` : "Nothing is closing soon.";
+  }
+  const evs = [...S.ev.values()].filter(e => e.date === date && !e.hidden).sort((a, b) => a.start_min - b.start_min);
+  if (/what|on|event|happen|going|plan/.test(s)) return evs.length ? `Here is what is on ${label}:${list(evs)}` : `Nothing is listed for ${label}.`;
+  return "I can answer “what is on tomorrow?”, “am I free at 7?” or “any clashes?”. Try one of those.";
+}
+
+/* ---------- one place for all clicks and submits ---------- */
+document.addEventListener("click", async ev => {
+  const t = ev.target.closest("button, g[data-venue], svg");
+  if (!t) return;
+  if (t.dataset.tab) return load(t.dataset.tab);
+  if (t.dataset.act) return act(t.dataset.act, +t.dataset.id);
+  if (t.dataset.day !== undefined) { S.day = +t.dataset.day; return load(S.view); }
+  if (t.dataset.chip) {
+    const c = t.dataset.chip, on = !S.interests.has(c);
+    on ? S.interests.add(c) : S.interests.delete(c); render();
+    try { await api("/api/taste", {method: "POST", body: {category: c, on}}); await load("today", true); } catch (e) { toast(e.message, true); }
+    return;
+  }
+  if (t.dataset.delbusy) { try { const r = await api("/api/busy/" + t.dataset.delbusy, {method: "DELETE"}); toast(r.message); load("calendar", true); } catch (e) { toast(e.message, true); } return; }
+  if (t.dataset.switch) {
+    const [kind, name] = [t.dataset.switch.slice(0, 1), t.dataset.switch.slice(2)];
+    if (kind === "c") { S.connect[name] = !S.connect[name]; store.set("fomo.connect", S.connect); toast(S.connect[name] ? "Switched on (preview)." : "Switched off."); render(); }
+    else {
+      const cur = new Set(S.sources || S.cfg.sources); cur.has(name) ? cur.delete(name) : cur.add(name);
+      S.sources = S.cfg.sources.filter(x => cur.has(x)); store.set("fomo.sources", S.sources);
+      toast(cur.has(name) ? name + " events are back." : name + " events are hidden."); render();
+    }
+    return;
+  }
+  if (t.id === "logout") { await api("/api/auth/logout", {method: "POST"}).catch(() => {}); S.me = null; S.ev.clear(); showSignIn(); return; }
+  if (t.id === "seedBtn") { try { const r = await api("/api/admin/seed-demo", {method: "POST"}); toast(r.message); } catch (e) { toast(e.message, true); } return; }
+  const pin = ev.target.closest("g[data-venue]");
+  if (pin) { S.mapSel = +pin.dataset.venue; return render(); }
+  if (ev.target.closest("#mapsvg")) {
+    const svg = $("#mapsvg"), r = svg.getBoundingClientRect();
+    S.pos = {x: Math.round((ev.clientX - r.left) / r.width * 100), y: Math.round((ev.clientY - r.top) / r.height * 100)};
+    store.set("fomo.pos", S.pos); toast("Got it. You are here."); render();
+  }
+});
+document.addEventListener("keydown", ev => {
+  const pin = ev.target.closest && ev.target.closest("g[data-venue]");
+  if (pin && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); S.mapSel = +pin.dataset.venue; render(); }
+});
+document.addEventListener("change", ev => { if (ev.target.id === "flt") { S.filter = ev.target.value; render(); } });
+document.addEventListener("submit", async ev => {
+  const f = ev.target;
+  if (f.id === "busyForm") {
+    ev.preventDefault();
+    try {
+      const r = await api("/api/busy", {method: "POST", body: {title: $("#bt").value, day: S.cal.date, start: $("#bs").value, end: $("#be").value, weekly: $("#bw").checked}});
+      toast(r.message); load("calendar", true);
+    } catch (e) { toast(e.message, true); }
+  }
+  if (f.id === "askForm") {
+    ev.preventDefault();
+    const q = $("#q").value.trim(); if (!q) return;
+    S.chat.push({who: "me", html: esc(q)});
+    try { S.chat.push({who: "bot", html: await answer(q)}); } catch (e) { S.chat.push({who: "bot", html: esc(e.message)}); }
+    render(); $("#q").focus();
+  }
+  if (f.id === "evForm") {
+    ev.preventDefault();
+    const dl = $("#f-dl").value;
+    const body = {title: $("#f-title").value, description: $("#f-desc").value, category: $("#f-cat").value, source: $("#f-src").value,
+      venue_id: $("#f-venue").value, date: $("#f-date").value, start: $("#f-s").value, end: $("#f-e").value, seats: $("#f-seats").value, deadline: dl};
+    try { const r = await api("/api/events", {method: "POST", body}); toast(r.message); f.reset(); } catch (e) { toast(e.message, true); }
+  }
+});
+
+/* ---------- start ---------- */
+async function boot() {
+  $("#who").textContent = S.me.name || S.me.email;
+  $("#logout").hidden = false;
+  try { S.interests = new Set((await api("/api/taste")).interests); } catch {}
+  try { if (!S.venues.length) S.venues = (await api("/api/venues")).venues; } catch {}
+  S.cfg = (await api("/api/config")); // refresh "today"
+  await load("today");
+}
+(async function start() {
+  try { S.cfg = await api("/api/config"); }
+  catch (e) { $("#main").innerHTML = `<div class="error" role="alert">${esc(e.message)}</div>`; return; }
+  try { S.me = (await api("/api/me")).user; await boot(); }
+  catch { showSignIn(); }
+})();
+</script>
+</body>
+</html>
